@@ -1,0 +1,33 @@
+Supermercado:
+    Misma generalizacion (boton mostrar mas)
+        Metro (Listo)
+        Vivanda (Listo)
+        Vega  (Listo)
+        Shopstar (Listo)
+        Wong (listo)
+
+    Generalizacion (dar click a la siguiente pagina)
+        Tottus  (Listo)
+        Plaza Vea (Listo)
+        
+
+Tiendas de conveniencia (online): (Proxys inversos no hay de otra)
+    Tambo + (Scrapeado) (Web propia)
+    Pedidos Ya market https://www.pedidosya.com.pe/
+    Listo (https://www.rappi.com.pe/tiendas/326-gas-station) Empleando Rappi   (DESPUES DE UN TIEMPO te pide verificar identidad) (Ver proxys inversos)
+    La cesta Rappi https://www.rappi.com.pe/tiendas/33820-darkstores-nc    https://www.pedidosya.com.pe/restaurantes/lima/pedidosya-market-nights-barranco-8b8afb54-4d7a-4b75-b7c3-b5768604668e-menu?origin=custom-entry-points
+
+Aplicaciones de Delivery:
+    Rappi: www.rappi.com.pe
+    PedidosYa: www.pedidosya.com.pe
+    Cornershop by Uber: www.cornershopapp.com
+
+Tiendas Directas de Fabricantes y Productores:
+    Gloria: Productos lácteos, yogures y jugos. www.gloria.com.pe
+    Laive: Productos lácteos y bebidas. www.laive.com.pe
+    Inka Crops: Snacks y bebidas saludables. www.inkacrops.com.pe
+    Ajinomoto: Productos sazonadores y alimenticios. www.ajinomoto.com.pe
+
+
+
+
