@@ -29,7 +29,7 @@ for fecha in fechas_disponibles:
     mif_file = mif_base / fecha / f"mifarma_limpio_{fecha}.xlsx"
 
     if not ink_file.exists() or not mif_file.exists():
-        print(f"⚠️ Archivos no encontrados para la fecha {fecha}")
+        print(f"Archivos no encontrados para la fecha {fecha}")
         continue
 
     output_dir = output_base / "salud" / fecha
