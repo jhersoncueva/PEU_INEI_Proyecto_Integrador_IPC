@@ -8,10 +8,14 @@ from pathlib import Path
 fecha_manual = None  
 current_dir = Path(__file__).parent.absolute()
 
-# Directorios base de entrada y salida
+# Directorios de entrada
 ink_base = current_dir / "data/processed/inkafarma"
 mif_base = current_dir / "data/processed/mi_farma"
-output_base = current_dir / "data/consolidated"
+
+# Nuevo directorio de salida
+output_dir = current_dir / "data/processed/consolidado_salud"
+output_dir.mkdir(parents=True, exist_ok=True)
+output_file = output_dir / "precios_consolidados.xlsx"
 
 # Si no se indica fecha, buscar todas las carpetas disponibles
 if fecha_manual is None:
@@ -19,8 +23,11 @@ if fecha_manual is None:
 else:
     fechas_disponibles = [fecha_manual]
 
+# Lista para guardar todos los consolidado de fechas
+lista_consolidados = []
+
 # ------------------------------------------
-# PROCESAR CADA FECHA
+# PROCESAR TODAS LAS FECHAS
 # ------------------------------------------
 for fecha in fechas_disponibles:
     print(f"\nProcesando fecha: {fecha}")
@@ -31,10 +38,6 @@ for fecha in fechas_disponibles:
     if not ink_file.exists() or not mif_file.exists():
         print(f"Archivos no encontrados para la fecha {fecha}")
         continue
-
-    output_dir = output_base / "salud" / fecha
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"precios_consolidados_{fecha}.xlsx"
 
     # ------------------------------------------
     # CARGA DE DATOS
@@ -77,14 +80,13 @@ for fecha in fechas_disponibles:
         if len(precios) == 0:
             continue
 
-        # ========= PROMEDIO GEOMÉTRICO =========
         n = len(precios)
         promedio_geom = np.exp(np.mean(np.log(precios)))
-        # =================================================
 
         fila_ref = grupo.iloc[0]
 
         resultados.append({
+            "FECHA": fecha,
             "CLAVE_MATCHING": clave,
             "CODIGO": fila_ref.get("CODIGO"),
             "CATEGORIA": fila_ref.get("CATEGORIA"),
@@ -112,8 +114,15 @@ for fecha in fechas_disponibles:
     )
     consolidado = consolidado.merge(matching_por_producto, on="CLAVE_MATCHING", how="left")
 
-    # ------------------------------------------
-    # GUARDAR RESULTADO
-    # ------------------------------------------
-    consolidado.to_excel(output_file, index=False)
-    print(f"Archivo consolidado guardado")
+    # Guardar para juntar después
+    lista_consolidados.append(consolidado)
+
+# ------------------------------------------
+# UNIR TODAS LAS FECHAS
+# ------------------------------------------
+if lista_consolidados:
+    final_df = pd.concat(lista_consolidados, ignore_index=True)
+    final_df.to_excel(output_file, index=False)
+    print(f"\nArchivo UNICO guardado en: {output_file.name}")
+else:
+    print("No se generaron resultados.")
