@@ -43,6 +43,15 @@ def click_center_of_viewport(driver):
 def gather_data(productos, folder_suffix, all_data):
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
+
+    
+    # --- MODO HEADLESS (oculta la ventana) ---
+    options.add_argument("--headless=new")  # para Chrome moderno
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1920,1080")
+
+    
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 20)
 
@@ -69,7 +78,7 @@ def gather_data(productos, folder_suffix, all_data):
         # print(f"🔍 Distritos encontrados: {len(all_distritos)} → {all_distritos}")
 
         # 4️⃣ Iterar sobre cada distrito
-        for distrito in all_distritos:  # Limitar a los primeros 5 distritos para pruebas
+        for distrito in all_distritos[1:2]:  # Limitar a los primeros 5 distritos para pruebas
             dist_elem = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_SELECT_DIST)))
             Select(dist_elem).select_by_visible_text(distrito)
             time.sleep(2)
@@ -107,21 +116,21 @@ def gather_data(productos, folder_suffix, all_data):
                 except Exception as e:
                     print(f"⚠️ Error capturando datos en {distrito}: {e}")
 
-        # 5️⃣ Concatenar y guardar todo
-        if all_data:
-            final_df = pd.concat(all_data, ignore_index=True)
+        # # 5️⃣ Concatenar y guardar todo
+        # if all_data:
+        #     final_df = pd.concat(all_data, ignore_index=True)
 
-            # Crear carpeta con fecha actual
-            today = datetime.now()
-            folder_name = f"data/osinergmin/osin_{folder_suffix}_{today.strftime('%d_%m_%Y')}"
-            os.makedirs(folder_name, exist_ok=True)
+        #     # Crear carpeta con fecha actual
+        #     today = datetime.now()
+        #     folder_name = f"data/osinergmin/osin_{folder_suffix}_{today.strftime('%d_%m_%Y')}"
+        #     os.makedirs(folder_name, exist_ok=True)
 
-            file_path = os.path.join(folder_name, f"{DEPARTAMENTO}_{PROVINCIA}.csv")
-            final_df.to_csv(file_path, index=False, encoding="utf-8-sig")
+        #     file_path = os.path.join(folder_name, f"{DEPARTAMENTO}_{PROVINCIA}.csv")
+        #     final_df.to_csv(file_path, index=False, encoding="utf-8-sig")
 
-            # print(f"\n✅ Archivo guardado correctamente en: {file_path}")
-        else:
-            print("\n⚠️ No se obtuvieron datos para guardar.")
+        #     # print(f"\n✅ Archivo guardado correctamente en: {file_path}")
+        # else:
+        #     print("\n⚠️ No se obtuvieron datos para guardar.")
     finally:
         driver.quit()
 
