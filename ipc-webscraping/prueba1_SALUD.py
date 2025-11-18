@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from pathlib import Path
 
 # ------------------------------------------
@@ -12,19 +11,77 @@ current_dir = Path(__file__).parent.absolute()
 ink_base = current_dir / "data/processed/inkafarma"
 mif_base = current_dir / "data/processed/mi_farma"
 
-# Nuevo directorio de salida
-output_dir = current_dir / "data/processed/consolidado_salud"
+output_dir = current_dir / "data/consolidated/consolidado_salud"
 output_dir.mkdir(parents=True, exist_ok=True)
 output_file = output_dir / "precios_consolidados.xlsx"
 
-# Si no se indica fecha, buscar todas las carpetas disponibles
+# Fechas
 if fecha_manual is None:
     fechas_disponibles = sorted([f.name for f in ink_base.iterdir() if f.is_dir()])
 else:
     fechas_disponibles = [fecha_manual]
 
-# Lista para guardar todos los consolidado de fechas
-lista_consolidados = []
+# Lista general
+lista_final = []
+
+# ------------------------------------------
+# 1) MAPEO DE SUBCATEGORÍAS (PRODUCTO INEI)
+# ------------------------------------------
+
+mapa_subcat = {
+    "Antibióticos": "ANTIBIÓTICOS/ANTIBACTERIANOS",
+    "Antibióticos Respiratorios": "ANTIBIÓTICOS/ANTIBACTERIANOS",
+
+    "Antiarrítmicos": "ANTIARRÍTMICOS (APARATO CARDIOVASCULAR)",
+    "Antihipertensivos": "ANTIHIPERTENSIVOS",
+
+    "Antiflatulentos": "ANTIÁCIDOS, ANTIFLATULENTOS",
+    "Antiulcerosos/Protector Gástrico": "ANTIULCEROSOS, ANTISECRETORES",
+
+    "Antiasmáticos": "ANTIASMÁTICOS Y BRONCODILATADORES",
+    "Antigripales": "ANTIGRIPALES",
+
+    "Reguladores de Hormonas": "HORMONAS NATURALES Y SINTÉTICAS (APARATO REPRODUCTOR)",
+    "Descongestionante Oftálmico": "DESCONGESTIVOS OFTÁLMICOS",
+    "cicatrizantes /Heridas/ Otros": "ANTISÉPTICOS Y CICATRIZANTES (PIEL Y MUCOSAS)",
+
+    "Antianémicos": "ANTIANÉMICOS",
+
+    "Antiepilépticos": "ANTICONVULSIVOS, ANTIEPILÉPTICOS (SISTEMA NERVIOSO)",
+    "Antidepresivos": "ANTIDEPRESIVOS (SISTEMA NERVIOSO)",
+
+    "Anticonceptivos": "ANTICONCEPTIVOS"
+}
+
+# ------------------------------------------
+# 2) MAPEO DE CATEGORÍA (RUBRO INEI)
+# ------------------------------------------
+
+mapa_cat_from_subcat = {
+    "ANTIBIÓTICOS/ANTIBACTERIANOS": "ANTIINFECCIOSOS SISTÉMICOS",
+
+    "ANTIARRÍTMICOS (APARATO CARDIOVASCULAR)": "APARATO CARDIOVASCULAR",
+    "ANTIHIPERTENSIVOS": "APARATO CARDIOVASCULAR",
+
+    "ANTIÁCIDOS, ANTIFLATULENTOS": "APARATO DIGESTIVO",
+    "ANTIULCEROSOS, ANTISECRETORES": "APARATO DIGESTIVO",
+
+    "ANTIASMÁTICOS Y BRONCODILATADORES": "APARATO RESPIRATORIO",
+    "ANTIGRIPALES": "APARATO RESPIRATORIO",
+
+    "HORMONAS NATURALES Y SINTÉTICAS (APARATO REPRODUCTOR)": "APARATO GENITOURINARIO Y REPRODUCTOR",
+
+    "DESCONGESTIVOS OFTÁLMICOS": "OFTALMOLÓGICOS",
+
+    "ANTISÉPTICOS Y CICATRIZANTES (PIEL Y MUCOSAS)": "PIEL Y MUCOSAS",
+
+    "ANTIANÉMICOS": "SANGRE, LÍQUIDOS Y ELECTROLITOS",
+
+    "ANTICONVULSIVOS, ANTIEPILÉPTICOS (SISTEMA NERVIOSO)": "SISTEMA NERVIOSO",
+    "ANTIDEPRESIVOS (SISTEMA NERVIOSO)": "SISTEMA NERVIOSO",
+
+    "ANTICONCEPTIVOS": "ANTICONCEPTIVOS"
+}
 
 # ------------------------------------------
 # PROCESAR TODAS LAS FECHAS
@@ -39,90 +96,55 @@ for fecha in fechas_disponibles:
         print(f"Archivos no encontrados para la fecha {fecha}")
         continue
 
-    # ------------------------------------------
-    # CARGA DE DATOS
-    # ------------------------------------------
+    # Cargar datos
     ink_df = pd.read_excel(ink_file)
     mif_df = pd.read_excel(mif_file)
 
+    # Normalizar columnas
     ink_df.columns = ink_df.columns.str.upper().str.strip()
     mif_df.columns = mif_df.columns.str.upper().str.strip()
 
+    # Etiqueta de farmacia
     ink_df["FUENTE"] = "INKAFARMA"
     mif_df["FUENTE"] = "MIFARMA"
 
-    # ------------------------------------------
-    # FILTRAR PRECIOS EXTREMOS (>300)
-    # ------------------------------------------
+    # Filtrar extremos
     ink_df = ink_df[ink_df["PRECIO_FINAL"] <= 300]
     mif_df = mif_df[mif_df["PRECIO_FINAL"] <= 300]
 
+    # Unir ambas
     df = pd.concat([ink_df, mif_df], ignore_index=True)
 
-    df = df.dropna(subset=["CLAVE_MATCHING", "PRECIO_FINAL"])
-    df = df[df["PRECIO_FINAL"] > 0]
+    # Guardar fecha
+    df["FECHA"] = fecha
 
-    # ------------------------------------------
-    # NORMALIZAR SUBCATEGORÍAS
-    # ------------------------------------------
-    df["SUBCATEGORIA"] = df["SUBCATEGORIA"].str.strip().replace({
-        "Antibióticos Respiratorios": "Antibióticos"
-    })
+    # ---------------------------
+    # SUBCATEGORÍA → INEI
+    # ---------------------------
+    df["SUBCATEGORIA"] = df["SUBCATEGORIA"].str.strip()
+    df["SUBCATEGORIA_EST"] = df["SUBCATEGORIA"].replace(mapa_subcat)
 
-    # ------------------------------------------
-    # CONSOLIDAR POR PRODUCTO (PROMEDIO GEOMÉTRICO)
-    # ------------------------------------------
-    resultados = []
+    # Verificar faltantes
+    faltantes = df[df["SUBCATEGORIA_EST"].isna()]["SUBCATEGORIA"].unique()
+    if len(faltantes) > 0:
+        print("\n SUBCATEGORÍAS NO RECONOCIDAS:")
+        print(faltantes)
 
-    for clave, grupo in df.groupby("CLAVE_MATCHING"):
-        precios = grupo["PRECIO_FINAL"].dropna()
+    # ---------------------------
+    # CATEGORÍA (RUBRO INEI)
+    # ---------------------------
+    df["CATEGORIA"] = df["SUBCATEGORIA_EST"].map(mapa_cat_from_subcat)
 
-        if len(precios) == 0:
-            continue
-
-        n = len(precios)
-        promedio_geom = np.exp(np.mean(np.log(precios)))
-
-        fila_ref = grupo.iloc[0]
-
-        resultados.append({
-            "FECHA": fecha,
-            "CLAVE_MATCHING": clave,
-            "CODIGO": fila_ref.get("CODIGO"),
-            "CATEGORIA": fila_ref.get("CATEGORIA"),
-            "SUBCATEGORIA": fila_ref.get("SUBCATEGORIA"),
-            "NOMBRE": fila_ref.get("NOMBRE"),
-            "NOMBRE_COMERCIAL": fila_ref.get("NOMBRE_COMERCIAL"),
-            "CONCENTRACION": fila_ref.get("CONCENTRACION"),
-            "DESCRIPCION": fila_ref.get("DESCRIPCION"),
-            "LABORATORIO": fila_ref.get("LABORATORIO"),
-            "PRESENTACION": fila_ref.get("PRESENTACION"),
-            "TIPO_ENVASE": fila_ref.get("TIPO_ENVASE"),
-            "CANTIDAD_ENVASE": fila_ref.get("CANTIDAD_ENVASE"),
-            "UNIDAD_ENVASE": fila_ref.get("UNIDAD_ENVASE"),
-            "PROMEDIO_GEOM": promedio_geom,
-            "PRODUCTOS_DISPONIBLES": n,
-        })
-
-    consolidado = pd.DataFrame(resultados)
-
-    # Contar matching
-    matching_por_producto = (
-        df.groupby("CLAVE_MATCHING")["FUENTE"]
-        .nunique()
-        .reset_index(name="MATCHING_POR_PRODUCTO")
-    )
-    consolidado = consolidado.merge(matching_por_producto, on="CLAVE_MATCHING", how="left")
-
-    # Guardar para juntar después
-    lista_consolidados.append(consolidado)
+    # Agregar
+    lista_final.append(df)
 
 # ------------------------------------------
-# UNIR TODAS LAS FECHAS
+# UNIR TODO Y GUARDAR
 # ------------------------------------------
-if lista_consolidados:
-    final_df = pd.concat(lista_consolidados, ignore_index=True)
+if lista_final:
+    final_df = pd.concat(lista_final, ignore_index=True)
+    final_df = final_df.drop(columns=["SUBCATEGORIA"], errors="ignore")
     final_df.to_excel(output_file, index=False)
-    print(f"\nArchivo UNICO guardado en: {output_file.name}")
+    print(f"\nArchivo FINAL guardado")
 else:
     print("No se generaron resultados.")
