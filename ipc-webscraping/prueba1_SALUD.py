@@ -13,7 +13,7 @@ mif_base = current_dir / "data/processed/mi_farma"
 
 output_dir = current_dir / "data/consolidated"
 output_dir.mkdir(parents=True, exist_ok=True)
-output_file = output_dir / "consolidado_final_salud.xlsx"
+output_file = output_dir / "consolidado_salud.xlsx"
 
 # Fechas
 if fecha_manual is None:
