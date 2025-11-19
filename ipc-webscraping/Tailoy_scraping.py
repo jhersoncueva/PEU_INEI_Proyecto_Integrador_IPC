@@ -1,5 +1,5 @@
 # ============================================
-# TAILOY SCRAPER — VERSIÓN AUTÓNOMA CON THREADING
+# TAILOY SCRAPER 
 # EXCEL CONSOLIDADO: categoria, subcategoria, producto, codigo, marca, nombre, precio, fecha
 # ============================================
 
@@ -20,7 +20,7 @@ from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 # ---------- CONFIG ----------
 # Carpeta OBLIGATORIA donde guardar resultados
-OUTPUT_BASE_DIR = r"C:\Users\Hp\Desktop\WebScraping\Personal\tailoy-ipc-webscraping\raw"
+OUTPUT_BASE_DIR = r"C:\Users\Hp\Documents\GitHub\PEU_INEI_Proyecto_Integrador_IPC\ipc-webscraping\data\raw\tailoy"
 
 # Dominio fijo
 BASE_ROOT = "https://www.tailoy.com.pe"
