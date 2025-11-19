@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-================================================================================
-TAILOY — normalizacion
-================================================================================
+TAILOY — Limpieza y filtro 
 """
 
 from __future__ import annotations
@@ -16,13 +14,16 @@ import pandas as pd
 from zipfile import BadZipFile
 
 # =============================================================================
-# CONFIGURACIÓN — SOLO EDITA ESTAS 2 RUTAS SI ES NECESARIO
+# CONFIGURACIÓN — SOLO EDITA ESTAS 3 RUTAS SI ES NECESARIO
 # =============================================================================
 RAW_ROOT: Path = Path(
-    r"C:\Users\Hp\Desktop\WebScraping\Personal\tailoy-ipc-webscraping\raw"
+    r"C:\Users\Hp\Documents\GitHub\PEU_INEI_Proyecto_Integrador_IPC\ipc-webscraping\data\raw\tailoy"
 )
 OUT_ROOT: Path = Path(
-    r"C:\Users\Hp\Desktop\WebScraping\Personal\tailoy-ipc-webscraping\normalized"
+    r"C:\Users\Hp\Documents\GitHub\PEU_INEI_Proyecto_Integrador_IPC\ipc-webscraping\data\processed\tailoy"
+)
+OUT_CONSOLIDADO: Path = Path(
+    r"C:\Users\Hp\Documents\GitHub\PEU_INEI_Proyecto_Integrador_IPC\ipc-webscraping\data\consolidated"
 )
 
 # Patrón de nombre de archivo dentro de cada carpeta de fecha
@@ -230,8 +231,8 @@ PACK_G_RE = re.compile(
     re.IGNORECASE,
 )
 
-X_COLORES_CAP_RE = re.compile(r"[x×]\s*(\d{1,4})\s*col(?:ores|\.? )\b", re.IGNORECASE)
-NUM_COLORES_CAP_RE = re.compile(r"\b(\d{1,4})\s*col(?:ores|\.? )\b", re.IGNORECASE)
+X_COLORES_CAP_RE = re.compile(r"[x×]\s*(\d{1,4})\s*col(?:ores|\.?)\b", re.IGNORECASE)
+NUM_COLORES_CAP_RE = re.compile(r"\b(\d{1,4})\s*col(?:ores|\.?)\b", re.IGNORECASE)
 COLOR_SING_RE = re.compile(r"\bcolor\b", re.IGNORECASE)
 
 REGLA_CM_RE = re.compile(r"\b(\d{1,3})\s*cm\b", re.IGNORECASE)
@@ -262,7 +263,7 @@ def parse_price_to_float(val: object) -> Optional[float]:
             return float(s_norm)
         elif has_com and not has_dot:
             m = re.search(r",(\d+)$", s)
-            tail = m.group(1)
+            tail = m.group(1) if m else ""
             if m and len(tail) <= 2:
                 s_norm = s.replace(",", ".")
             else:
@@ -390,9 +391,6 @@ def detect_pack_g(text: str) -> Optional[Tuple[int, float]]:
 # FILTROS ESPECÍFICOS POR PRODUCTO (PASO 6)
 # =============================================================================
 def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
-    # Normalizar
-    nombre_norm = (nombre_norm or "").lower()
-
     # Borradores: eliminar filas cuyo nombre tenga "tajador"
     if prod_slug == "borradores":
         if "tajador" in nombre_norm:
@@ -411,17 +409,17 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
     if prod_slug == "cintas-adhesivas-y-masking-tape":
         return True
 
-    # Colores -> eliminar si 'jumbo' en nombre
+    # Colores
     if prod_slug == "colores":
-        if "jumbo" in nombre_norm:
-            return False
         embalaje = re.search(
             r"\b(maletin|malet[ií]n|estuche|kit|set|caja|tubo)\b", nombre_norm
         )
         conteo_unidades = (
             X_UND_RE.search(nombre_norm)
             or NUM_UND_RE.search(nombre_norm)
-            or re.search(r"\b\d{1,4}\s*(lapices|l[aá]pices|unidades?)\b", nombre_norm)
+            or re.search(
+                r"\b(\d{1,4})\s*(lapices|l[aá]pices|unidades?)\b", nombre_norm
+            )
         )
         if embalaje and not conteo_unidades:
             return False
@@ -431,29 +429,29 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
             nombre_norm,
         )
         m_colors = re.search(r"\b(\d{1,4})\s*colores?\b", nombre_norm)
+        # Doble conteo piezas vs colores → excluir por ambiguo
         if m_units and m_colors:
             return False
         return True
 
-    # Compases -> si 'profesional' eliminar
+    # Compases
     if prod_slug == "compases":
-        if "profesional" in nombre_norm:
-            return False
         if re.search(r"\bpiezas?\b", nombre_norm) or re.search(r"\bset\b", nombre_norm):
             return False
         return True
 
-    # Cuadernos-anillados (ya no forzamos hojas)
+    # Cuadernos-anillados
     if prod_slug == "cuadernos-anillados":
         if re.search(r"\ba5\b", nombre_norm):
             return False
         return True
 
-    # Escuadras -> si menciona 45/60 eliminar
+    # Escuadras
     if prod_slug == "escuadras":
-        if re.search(r"\b(transportador|curv[ií]grafo?s?|escal[ií]metro|trazador|plantilla|c[ií]rculos?)\b", nombre_norm):
-            return False
-        if re.search(r"45\s*[/\\]\s*60", nombre_norm):
+        if re.search(
+            r"\b(transportador|curv[ií]grafo?s?|escal[ií]metro|trazador|plantilla|c[ií]rculos?)\b",
+            nombre_norm,
+        ):
             return False
         if "juego de escuadras" not in nombre_norm:
             return False
@@ -470,23 +468,13 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
 
     # Gomas-siliconas-y-colas
     if prod_slug == "gomas-siliconas-y-colas":
-        # si menciona 'pistola' excluir
         if "pistola" in nombre_norm:
-            return False
-        # colas: si 'galon' eliminar
-        if "galon" in nombre_norm or "galón" in nombre_norm:
-            return False
-        # gomas: solo aceptar si dice 'barra'
-        if "goma" in nombre_norm and "barra" not in nombre_norm:
-            return False
-        # siliconas: eliminar todo (según instrucción)
-        if "silicona" in nombre_norm:
             return False
         return True
 
-    # Lapiceros -> eliminar marca MOOVING se hace a nivel final (marca)
+    # Lapiceros
     if prod_slug == "lapiceros":
-        if re.search(r"\blapiz\b", nombre_norm) or "lapiz" in nombre_norm:
+        if re.search(r"\bl[aá]piz\b", nombre_norm) or "lapiz" in nombre_norm:
             return False
         if re.search(r"\bcolores?\b", nombre_norm) or re.search(r"\bcolor\b", nombre_norm):
             return False
@@ -500,20 +488,51 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
             return False
         return True
 
-    # Plastilinas -> eliminar si 'premium' en nombre
-    if prod_slug == "plastilinas":
-        if "premium" in nombre_norm:
+    # ---- REGLA CORREGIDA PARA MALETAS-Y-MOCHILAS ----
+    if prod_slug == "maletas-y-mochilas":
+        has_mochila = "mochila" in nombre_norm
+        has_lonchera = "lonchera" in nombre_norm
+        has_cartuch = "cartuchera" in nombre_norm
+        tipos_mlm = sum([has_mochila, has_lonchera, has_cartuch])
+
+        # a) Mezcla de tipos (mochila/lonchera/cartuchera): excluir
+        if tipos_mlm >= 2:
             return False
-        # conservar solo si aparece cantidad (N und) — original lógica
+
+        # b) Pack/combo/set/kit/juego o conteos 'x N'/'N und' + menciona alguno de esos tipos: excluir
+        has_pack_word = bool(PACK_WORD_RE.search(nombre_norm))
+        has_qty_pack = bool(X_UND_RE.search(nombre_norm) or NUM_UND_RE.search(nombre_norm))
+        if (has_pack_word or has_qty_pack) and (has_mochila or has_lonchera or has_cartuch):
+            return False
+
+        # c) Caso simple: conservar
+        return True
+
+    # Papel bond
+    if prod_slug == "papel-bond":
+        if not (re.search(r"\ba4\b", nombre_norm) or re.search(r"\ba5\b", nombre_norm)):
+            return False
+        if re.search(
+            r"\b(a3|oficio|carta|legal|plotter|papel[oó]grafo|rollo|pliego)\b", nombre_norm
+        ):
+            return False
+        if re.search(r"\b(a4\s*/\s*a3|a3\s*/\s*a4)\b", nombre_norm):
+            return False
+        return True
+
+    # Plastilinas
+    if prod_slug == "plastilinas":
+        if re.search(r"\bplum[oó]n(?:es)?\b", nombre_norm):
+            return False
         return bool(X_UND_RE.search(nombre_norm) or NUM_UND_RE.search(nombre_norm))
 
-    # Plumones-para-papel -> eliminar si no aparece 'und' en el nombre
+    # Plumones-para-papel
     if prod_slug == "plumones-para-papel":
-        if not re.search(r"\bund\b", nombre_norm):
-            return False
         if not re.search(r"\bplum[oó]n(?:es)?\b", nombre_norm):
             return False
-        if re.search(r"\brotulador(es)?\b", nombre_norm) or re.search(r"\bresaltador(es)?\b", nombre_norm):
+        if re.search(r"\brotulador(es)?\b", nombre_norm) or re.search(
+            r"\bresaltador(es)?\b", nombre_norm
+        ):
             return False
         if re.search(r"\bcolores?\b", nombre_norm) or re.search(r"\bl[aá]pice?s\b", nombre_norm):
             return False
@@ -531,14 +550,15 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
             return False
         if not REGLA_CM_RE.search(nombre_norm):
             return False
-        if re.search(r"\b(transportador|plantilla|curv[ií]grafos?|escal[ií]metro|trazador\s+de\s+c[íi]rculos|mapa)\b", nombre_norm):
+        if re.search(
+            r"\b(transportador|plantilla|curv[ií]grafos?|escal[ií]metro|trazador\s+de\s+c[íi]rculos|mapa)\b",
+            nombre_norm,
+        ):
             return False
         return True
 
-    # Resaltadores -> eliminar si dice 'plumon' en el nombre
+    # Resaltadores
     if prod_slug == "resaltadores":
-        if "plumon" in nombre_norm:
-            return False
         if "stabilo" in nombre_norm:
             return False
         return "resaltador" in nombre_norm
@@ -555,20 +575,6 @@ def family_row_filter(prod_slug: str, nombre_norm: str) -> bool:
             return False
         return True
 
-    # Tijeras -> eliminar si 'multiprop' (multipropósito)
-    if prod_slug == "tijeras":
-        if re.search(r"multiprop", nombre_norm):
-            return False
-        return True
-
-    # Crayones y oleos -> eliminar si contiene 'pincel'
-    if prod_slug == "crayones-y-oleos":
-        if "pincel" in nombre_norm:
-            return False
-        return True
-
-    # Compases/otros ya cubiertos
-
     # Por defecto, si no hay regla especial, se conserva
     return True
 
@@ -581,10 +587,11 @@ def choose_unidad_estandar(prod_slug: str, nombre: str, qty_info: dict) -> str:
     has_ml = qty_info.get("has_ml", False)
     has_g = qty_info.get("has_g", False)
     is_sil_barra = bool(
-        re.search(r"\bsilicona\s+en\s+barra\b", txt) or re.search(r"\bstick\s+de\s+silicona\b", txt)
+        re.search(r"\bsilicona\s+en\s+barra\b", txt)
+        or re.search(r"\bstick\s+de\s+silicona\b", txt)
     )
     is_goma_barra = bool(
-        re.search(r"\b(goma|pegamento)\s+en\s+barra\b", txt) or re.search(r"\bstick\b", txt) or ("barra" in txt and "goma" in txt)
+        re.search(r"\b(goma|pegamento)\s+en\s+barra\b", txt) or re.search(r"\bstick\b", txt)
     )
     is_grapas = bool(re.search(r"\bgrapas\b", txt))
 
@@ -611,9 +618,6 @@ def choose_unidad_estandar(prod_slug: str, nombre: str, qty_info: dict) -> str:
 
     # Gomas/siliconas/colas
     if prod_slug == "gomas-siliconas-y-colas":
-        # si contiene 'barra' forzar 10g (regla solicitada)
-        if "barra" in txt and "goma" in txt:
-            return "10g"
         if is_sil_barra:
             return "und"
         if has_ml:
@@ -724,16 +728,12 @@ def build_quantity_fields(
             pres = f"{units} x {vg:g} g" if units > 1 else f"{vg:g} g"
             return float(vg), "g", int(units), float(units * vg), pres, "G", aux, None
         # Silicona en barra
-        if re.search(r"\bsilicona\s+en\s+barra\b", tnorm) or re.search(r"\bstick\b", tnorm):
+        if re.search(r"\bsilicona\s+en\s+barra\b", tnorm) or re.search(
+            r"\bstick\s+de\siliciona\b", tnorm
+        ):
             units = detect_pack_units(txt, prod_slug) or 1
             pres = "Unidad" if units == 1 else f"X {int(units)} und"
             return float(units), "und", 1, float(units), pres, "UND", aux, None
-        # Goma en barra detectada por 'barra' + 'goma'
-        if "barra" in tnorm and "goma" in tnorm:
-            units = detect_pack_units(txt, prod_slug) or 1
-            pres = "Unidad" if units == 1 else f"X {int(units)} und"
-            # Forzar valor base (10g) en este caso - retornamos 10g como cantidad por unidad
-            return 10.0, "g", 1, 10.0, pres, "G", aux, None
 
     # Portaminas y minas
     if prod_slug == "portaminas-y-minas":
@@ -862,9 +862,7 @@ def extract_brand_from_name(name: str) -> Optional[str]:
 
 
 def _brand_is_missing(x: object) -> bool:
-    """
-    True si la 'marca' está ausente (NaN, vacío, 'sin marca', 's/m'/'s-m').
-    """
+    """True si la 'marca' está ausente (NaN, vacío, 'sin marca', 's/m'/'s-m')."""
     if x is None:
         return True
     s = _norm_text_simple(x)
@@ -956,14 +954,13 @@ def classify_producto_especifico(
 
     # --- CUADERNOS (cosidos / anillados / grapados A4) ---
     if prod_slug in {"cuadernos-cosidos", "cuadernos-anillados", "cuadernos-grapados-a4"}:
-        # 1) Cuaderno triple renglón (triple raya / triple renglón / 3 renglones)
+        # 1) Cuaderno triple renglón
         if re.search(r"triple\s+(raya|renglon)", nombre_norm) or re.search(
             r"\b3\s*(renglones?|rayas?)\b", nombre_norm
         ):
             return "cuaderno triple reglon"
 
-        # 2) Cuaderno doble renglón (doble raya, doblemax, 2 renglones,
-        #    con/sin sombra + renglón)
+        # 2) Cuaderno doble renglón
         if (
             "doble raya" in nombre_norm
             or "doblemax" in nombre_norm
@@ -1003,7 +1000,6 @@ def classify_producto_especifico(
             return "colas"
         if has_goma:
             return "gomas"
-        # fallback: lo dejamos en el mismo producto
         return prod
 
     # --- MALETAS Y MOCHILAS ---
@@ -1019,12 +1015,9 @@ def classify_producto_especifico(
         if child:
             return "mochila niño"
         if pro:
-            # Mochila / accesorio más "ejecutivo" (laptop, viaje, marcas técnicas)
             return "mochila"
         if has_tipo:
-            # Mochila escolar genérica
             return "mochila escolar"
-        # Si no encaja, tratamos como mochila genérica
         return "mochila"
 
     # --- RESTO: sin subdivisión especial ---
@@ -1034,8 +1027,12 @@ def classify_producto_especifico(
 # =============================================================================
 # PIPELINE PARA UN SOLO ARCHIVO
 # =============================================================================
-def process_file(input_path: Path, output_dir: Path) -> None:
-
+def process_file(input_path: Path, output_dir: Path) -> Optional[pd.DataFrame]:
+    """
+    Aplica el pipeline de limpieza/normalización a un solo archivo Excel.
+    Guarda la salida en `output_dir / (input_path.stem + "_clean_filt.xlsx")`.
+    Además, devuelve el DataFrame final para poder consolidar.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # [1/11] Leer datos
@@ -1043,8 +1040,8 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     try:
         df = pd.read_excel(input_path)
     except (BadZipFile, ValueError, OSError) as e:
-        print(f" No se pudo leer '{input_path.name}' como Excel ({type(e).__name__}): {e}")
-        return
+        print(f"ERROR: No se pudo leer '{input_path.name}' como Excel ({type(e).__name__}): {e}")
+        return None
 
     print(f"  Filas leídas: {len(df)}")
 
@@ -1081,7 +1078,7 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     col_marca = next((c for c in ["marca", "Marca", "brand", "Brand"] if c in df.columns), None)
 
     # [2/11] Sin 'codigo'
-    print("\n[2/11] Eliminando filas sin 'codigo'…")
+    print("\n[2/11] Eliminando filas sin 'codigo'...")
     mask_no_code = (
         df[col_codigo].isna()
         | (df[col_codigo].astype(str).str.strip() == "")
@@ -1095,10 +1092,10 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     )
     removed_no_code = int(mask_no_code.sum())
     df = df.loc[~mask_no_code].copy()
-    print(f"   Sin código eliminadas: {removed_no_code} | Restantes: {len(df)}")
+    print(f"  Filas sin código eliminadas: {removed_no_code} | Restantes: {len(df)}")
 
     # [3/11] FILTRO ALLOWED
-    print("\n[3/11] Aplicando filtro ALLOWED…")
+    print("\n[3/11] Aplicando filtro ALLOWED...")
     df["_cat"] = df[col_categoria].apply(_norm_token)
     df["_sub"] = df[col_subcat].apply(_norm_token)
     df["_prod"] = df[col_productos].apply(_norm_token)
@@ -1109,11 +1106,12 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     kept_allowed = int(mask_allowed.sum())
     df = df.loc[mask_allowed].copy()
     print(
-        f"   Conservadas: {kept_allowed} | ✗ Eliminadas (no permitidas): {len(mask_allowed) - kept_allowed}"
+        f"  Filas conservadas (ALLOWED): {kept_allowed} | "
+        f"Eliminadas (no permitidas): {len(mask_allowed) - kept_allowed}"
     )
 
     # [4/11] EXCLUSIONES genéricas
-    print("\n[4/11] Excluyendo por nombre (témpera/transportador/marcador)…")
+    print("\n[4/11] Excluyendo por nombre (témpera/transportador/marcador)...")
     excl_mask = df[col_nombre].apply(
         lambda x: bool(
             re.search(r"\btempera?s?\b", _norm_text_simple(x))
@@ -1123,17 +1121,17 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     )
     excluded_1 = int(excl_mask.sum())
     df = df.loc[~excl_mask].copy()
-    print(f"   Excluidas por nombre: {excluded_1} | Restantes: {len(df)}")
+    print(f"  Filas excluidas por nombre: {excluded_1} | Restantes: {len(df)}")
 
     # [5/11] Excluir NOMBRE con '+'
-    print("\n[5/11] Excluyendo filas con '+' en el nombre…")
+    print("\n[5/11] Excluyendo filas con '+' en el nombre...")
     plus_mask = df[col_nombre].astype(str).str.contains(r"\+", regex=True, na=False)
     excluded_plus = int(plus_mask.sum())
     df = df.loc[~plus_mask].copy()
-    print(f"   Excluidas por '+': {excluded_plus} | Restantes: {len(df)}")
+    print(f"  Filas excluidas por '+': {excluded_plus} | Restantes: {len(df)}")
 
     # [6/11] Filtros por producto (familia)
-    print("\n[6/11] Aplicando filtros específicos por producto…")
+    print("\n[6/11] Aplicando filtros específicos por producto...")
     fam_mask = df.apply(
         lambda r: family_row_filter(
             _norm_token(r[col_productos]), _norm_text_simple(r[col_nombre])
@@ -1143,15 +1141,16 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     kept_fam = int(fam_mask.sum())
     df = df.loc[fam_mask].copy()
     print(
-        f"   Conservadas por reglas de familia: {kept_fam} | ✗ Eliminadas: {len(fam_mask) - kept_fam}"
+        f"  Filas conservadas por reglas de familia: {kept_fam} | "
+        f"Eliminadas: {len(fam_mask) - kept_fam}"
     )
 
     # [7/11] Precio numérico (robusto)
-    print("\n[7/11] Parseando precios (robusto)…")
+    print("\n[7/11] Parseando precios (robusto)...")
     df["precio_num"] = df[col_precio].apply(parse_price_to_float)
 
     # [8/11] Cantidades + Normalización
-    print("\n[8/11] Detectando cantidades y calculando valor estándar…")
+    print("\n[8/11] Detectando cantidades y calculando valor estándar...")
     unidad_std_list: List[str] = []
     ce_list: List[float] = []
     ue_list: List[str] = []
@@ -1226,8 +1225,8 @@ def process_file(input_path: Path, output_dir: Path) -> None:
         }
     )
 
-    # [9/11] producto_especifico + eliminar filas sin marca + exclusiones adicionales
-    print("\n[9/11] Generando 'producto_especifico', aplicando exclusiones adicionales…")
+    # [9/11] producto_especifico + reglas extra + eliminar filas sin marca + excluir 'mochila'
+    print("\n[9/11] Generando 'producto_especifico' y aplicando reglas adicionales...")
 
     df_final["producto_especifico"] = df_final.apply(
         lambda r: classify_producto_especifico(
@@ -1239,147 +1238,147 @@ def process_file(input_path: Path, output_dir: Path) -> None:
         axis=1,
     )
 
-    # Eliminar filas por marca EXACTA 'MOOVING' (case-insensitive)
-    mask_mooving = df_final["marca"].astype(str).str.strip().str.lower() == "mooving"
-    removed_mooving = int(mask_mooving.sum())
-    if removed_mooving > 0:
-        print(f"  - Eliminando filas por marca 'MOOVING': {removed_mooving}")
-    df_final = df_final.loc[~mask_mooving].copy()
+    # Normalizaciones auxiliares para reglas extra
+    nombre_norm = df_final["nombre_producto"].apply(_norm_text_simple)
+    prod_esp_norm = df_final["producto_especifico"].astype(str).str.strip().str.lower()
+    if "marca" in df_final.columns:
+        marca_norm = df_final["marca"].astype(str).str.strip().str.upper()
+    else:
+        marca_norm = pd.Series("", index=df_final.index)
+
+    unidad_extra_norm = df_final["unidad_extraida"].astype(str).str.strip().str.lower()
+
+    # Partimos conservando todo
+    mask_keep = pd.Series(True, index=df_final.index)
+
+    # colas — Galón en nombre_producto
+    cond_colas_galon = (prod_esp_norm == "colas") & nombre_norm.str.contains("galon")
+    mask_keep &= ~cond_colas_galon
+
+    # colas — Debe contener 'cola' Y alguna referencia a 'g' o 'ml'
+    cond_colas_no_cola = (prod_esp_norm == "colas") & ~nombre_norm.str.contains("cola")
+    cond_colas_no_gml = (prod_esp_norm == "colas") & ~(
+        nombre_norm.str.contains("g") | nombre_norm.str.contains("ml")
+    )
+    cond_colas_invalid = cond_colas_no_cola | cond_colas_no_gml
+    mask_keep &= ~cond_colas_invalid
+
+    # colas — unidad_extraida = 'und'
+    cond_colas_und_unit = (prod_esp_norm == "colas") & (unidad_extra_norm == "und")
+    mask_keep &= ~cond_colas_und_unit
+
+    # colores — jumbo
+    cond_colores_jumbo = (prod_esp_norm == "colores") & nombre_norm.str.contains("jumbo")
+    mask_keep &= ~cond_colores_jumbo
+
+    # colores — marca STABILO
+    cond_colores_stabilo = (prod_esp_norm == "colores") & (marca_norm == "STABILO")
+    mask_keep &= ~cond_colores_stabilo
+
+    # compases — Profesional en nombre_producto
+    cond_compases_prof = (prod_esp_norm == "compases") & nombre_norm.str.contains("profesional")
+    mask_keep &= ~cond_compases_prof
+
+    # compases — marca MAPED
+    cond_compases_maped = (prod_esp_norm == "compases") & (marca_norm == "MAPED")
+    mask_keep &= ~cond_compases_maped
+
+    # crayones-y-oleos — pincel
+    cond_cray_pincel = (prod_esp_norm == "crayones-y-oleos") & nombre_norm.str.contains("pincel")
+    mask_keep &= ~cond_cray_pincel
+
+    # cuaderno-rayado — "musica" en nombre_producto
+    cond_cuad_musica = (prod_esp_norm == "cuaderno rayado") & nombre_norm.str.contains("musica")
+    mask_keep &= ~cond_cuad_musica
+
+    # escuadras — "45/60"
+    cond_escu_4560 = (prod_esp_norm == "escuadras") & nombre_norm.str.contains("45/60")
+    mask_keep &= ~cond_escu_4560
+
+    # gomas — solo si hay "barra" en nombre_producto
+    cond_gomas_sin_barra = (prod_esp_norm == "gomas") & ~nombre_norm.str.contains("barra")
+    mask_keep &= ~cond_gomas_sin_barra
+
+    # lapiceros — MOOVING
+    cond_lapic_mooving = (prod_esp_norm == "lapiceros") & (marca_norm == "MOOVING")
+    mask_keep &= ~cond_lapic_mooving
+
+    # plastilinas — "premium"
+    cond_plasti_premium = (prod_esp_norm == "plastilinas") & nombre_norm.str.contains("premium")
+    mask_keep &= ~cond_plasti_premium
+
+    # plumones-para-papel — eliminar si NO hay "und" en nombre_producto
+    cond_plum_sin_und = (prod_esp_norm == "plumones-para-papel") & ~nombre_norm.str.contains("und")
+    mask_keep &= ~cond_plum_sin_und
+
+    # resaltadores — "plumon"
+    cond_resalt_plumon = (prod_esp_norm == "resaltadores") & nombre_norm.str.contains("plumon")
+    mask_keep &= ~cond_resalt_plumon
+
+    # siliconas — eliminar todo
+    cond_siliconas = (prod_esp_norm == "siliconas")
+    mask_keep &= ~cond_siliconas
+
+    # tijeras — "multiproposito"
+    cond_tij_multi = (prod_esp_norm == "tijeras") & nombre_norm.str.contains("multiproposito")
+    mask_keep &= ~cond_tij_multi
+
+    # forros — "bolsa" en nombre_producto
+    cond_forros_bolsa = (prod_esp_norm == "forros") & nombre_norm.str.contains("bolsa")
+    mask_keep &= ~cond_forros_bolsa
+
+    # Necesario para filtro premium de lapiceros (precio alto)
+    precio_std_num = pd.to_numeric(
+        df_final["precio_por_unidad_estandar"], errors="coerce"
+    )
+
+    # lapiceros — filtro económico/básico (premium por nombre o precio alto)
+    cond_lapic_premium_name = (prod_esp_norm == "lapiceros") & nombre_norm.str.contains(
+        r"frixion|pop\s+lol|rollerball|hi\s*tecpoint|g2",
+        regex=True,
+    )
+    cond_lapic_premium_price = (
+        (prod_esp_norm == "lapiceros")
+        & precio_std_num.notna()
+        & (precio_std_num > 7.5)
+    )
+    cond_lapic_premium = cond_lapic_premium_name | cond_lapic_premium_price
+    mask_keep &= ~cond_lapic_premium
+
+    # Aplicar todas las reglas extra
+    removed_extra = int((~mask_keep).sum())
+    df_final = df_final.loc[mask_keep].copy()
+    print(
+        f"  Filas removidas por reglas extra de producto_especifico: {removed_extra} | "
+        f"Restantes: {len(df_final)}"
+    )
 
     # Eliminar filas sin marca
     mask_missing_brand = df_final["marca"].apply(_brand_is_missing)
     removed_brandless = int(mask_missing_brand.sum())
     df_final = df_final.loc[~mask_missing_brand].copy()
     print(
-        f"   Filas removidas por falta de marca: {removed_brandless} | Restantes: {len(df_final)}"
+        f"  Filas removidas por falta de marca: {removed_brandless} | Restantes: {len(df_final)}"
     )
 
-    # Exclusiones basadas en producto_especifico y nombre
-    # - Eliminar si producto_especifico == 'siliconas' (no considerar siliconas)
-    mask_siliconas = df_final["producto_especifico"].astype(str).str.strip().str.lower() == "siliconas"
-    removed_sil = int(mask_siliconas.sum())
-    if removed_sil > 0:
-        print(f"  - Eliminando producto_especifico='siliconas': {removed_sil}")
-    df_final = df_final.loc[~mask_siliconas].copy()
-
-    # - Colas: eliminar si 'galon' en nombre
-    mask_colas_galon = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "colas")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("galon|galón", na=False)
+    # Eliminar filas con producto_especifico == 'mochila'
+    pe_norm = df_final["producto_especifico"].astype(str).str.strip().str.lower()
+    mask_mochila = pe_norm.eq("mochila")
+    removed_mochila = int(mask_mochila.sum())
+    df_final = df_final.loc[~mask_mochila].copy()
+    print(
+        f"  Filas removidas producto_especifico='mochila': {removed_mochila} | Restantes: {len(df_final)}"
     )
-    removed_colas = int(mask_colas_galon.sum())
-    if removed_colas > 0:
-        print(f"  - Eliminando colas con 'galon' en nombre: {removed_colas}")
-    df_final = df_final.loc[~mask_colas_galon].copy()
-
-    # - Colores: eliminar si 'jumbo' en nombre
-    mask_colores_jumbo = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "colores")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("jumbo", na=False)
-    )
-    removed_colores = int(mask_colores_jumbo.sum())
-    if removed_colores > 0:
-        print(f"  - Eliminando colores con 'jumbo' en nombre: {removed_colores}")
-    df_final = df_final.loc[~mask_colores_jumbo].copy()
-
-    # - Compases: eliminar si 'profesional' en nombre
-    mask_compases_prof = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "compases")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("profesional", na=False)
-    )
-    removed_compases = int(mask_compases_prof.sum())
-    if removed_compases > 0:
-        print(f"  - Eliminando compases marcados como 'Profesional': {removed_compases}")
-    df_final = df_final.loc[~mask_compases_prof].copy()
-
-    # - Crayones-y-oleos: eliminar si 'pincel' en nombre
-    mask_cray_pincel = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "crayones-y-oleos")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("pincel", na=False)
-    )
-    removed_cray = int(mask_cray_pincel.sum())
-    if removed_cray > 0:
-        print(f"  - Eliminando crayones/oleos que contienen 'pincel': {removed_cray}")
-    df_final = df_final.loc[~mask_cray_pincel].copy()
-
-    # - Cuaderno rayado: eliminar si 'musica' en nombre
-    mask_cuad_musica = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "cuaderno rayado")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("musica", na=False)
-    )
-    removed_cuadmus = int(mask_cuad_musica.sum())
-    if removed_cuadmus > 0:
-        print(f"  - Eliminando cuadernos rayados que dicen 'musica': {removed_cuadmus}")
-    df_final = df_final.loc[~mask_cuad_musica].copy()
-
-    # - Escuadras: eliminar si '45/60' (o variantes) en nombre
-    mask_escu_4560 = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "escuadras")
-        & df_final["nombre_producto"].astype(str).str.contains(r"45\s*[/\\]\s*60", regex=True, na=False)
-    )
-    removed_escu = int(mask_escu_4560.sum())
-    if removed_escu > 0:
-        print(f"  - Eliminando escuadras con '45/60': {removed_escu}")
-    df_final = df_final.loc[~mask_escu_4560].copy()
-
-    # - Plastilinas: eliminar si 'premium' en nombre
-    mask_plast_prem = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "plastilinas")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("premium", na=False)
-    )
-    removed_plast = int(mask_plast_prem.sum())
-    if removed_plast > 0:
-        print(f"  - Eliminando plastilinas 'Premium': {removed_plast}")
-    df_final = df_final.loc[~mask_plast_prem].copy()
-
-    # - Plumones-para-papel: eliminar si no contiene 'und' (ya filtrado en family, but double-check)
-    mask_plum_no_und = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "plumones-para-papel")
-        & ~df_final["nombre_producto"].astype(str).str.lower().str.contains(r"\bund\b", na=False)
-    )
-    removed_plum = int(mask_plum_no_und.sum())
-    if removed_plum > 0:
-        print(f"  - Eliminando plumones-para-papel sin 'und': {removed_plum}")
-    df_final = df_final.loc[~mask_plum_no_und].copy()
-
-    # - Resaltadores: eliminar si contiene 'plumon' en nombre
-    mask_resalt_plum = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "resaltadores")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("plumon", na=False)
-    )
-    removed_resalt = int(mask_resalt_plum.sum())
-    if removed_resalt > 0:
-        print(f"  - Eliminando resaltadores que dicen 'plumon' en nombre: {removed_resalt}")
-    df_final = df_final.loc[~mask_resalt_plum].copy()
-
-    # - Tijeras: eliminar si 'multiprop' en nombre
-    mask_tij_multiprop = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "tijeras")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains(r"multiprop", na=False)
-    )
-    removed_tij = int(mask_tij_multiprop.sum())
-    if removed_tij > 0:
-        print(f"  - Eliminando tijeras 'Multipropósito': {removed_tij}")
-    df_final = df_final.loc[~mask_tij_multiprop].copy()
-
-    # ---------- Ajustes adicionales solicitados ----------
-    # - Gomas: asegurarse que la unidad estándar sea 10g para las gomas en barra
-    mask_gomas_barra = (
-        (df_final["producto_especifico"].astype(str).str.strip().str.lower() == "gomas")
-        & df_final["nombre_producto"].astype(str).str.lower().str.contains("barra", na=False)
-    )
-    if mask_gomas_barra.any():
-        df_final.loc[mask_gomas_barra, "unidad_estándar"] = "10g"
 
     # [10/11] DEDUP por 'codigo' → conservar SOLO la PRIMERA aparición
-    print("\n[10/11] Deduplicando por 'codigo' (conservar la primera)…")
+    print("\n[10/11] Deduplicando por 'codigo' (conservar la primera)...")
     df_final["codigo_limpio"] = (
         df_final["codigo"].astype(str).str.strip().str.upper()
     )
     before = len(df_final)
     df_final = df_final.drop_duplicates(subset=["codigo_limpio"], keep="first").copy()
     after = len(df_final)
-    print(f"   Duplicados removidos: {before - after} | Filas finales: {after}")
+    print(f"  Duplicados removidos: {before - after} | Filas finales: {after}")
 
     # Reordenar columnas para que 'producto_especifico' quede junto a 'producto'
     cols_order = [
@@ -1405,25 +1404,19 @@ def process_file(input_path: Path, output_dir: Path) -> None:
     df_final = df_final[cols_order]
 
     # [11/11] Guardar (sin 'codigo_limpio')
-    print("\n[11/11] Guardando archivo final…")
+    print("\n[11/11] Guardando archivo final...")
     out_path = output_dir / f"{input_path.stem}_clean_filt.xlsx"
 
     # Asegurar que la carpeta exista
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    df_final.drop(columns=["codigo_limpio"], inplace=True, errors="ignore")
-    df_final.to_excel(out_path, index=False)
+    df_final_sin_codigo = df_final.drop(columns=["codigo_limpio"], errors="ignore")
+    df_final_sin_codigo.to_excel(out_path, index=False)
 
-    print("\n Archivo final guardado:")
-    print("  →", out_path)
-    print("\nChecklist final:")
-    print(" - '+', packs/combos y exclusiones genéricas aplicadas")
-    print(" - Reglas por producto aplicadas (incluye exclusiones solicitadas)")
-    print(" - Se excluyen siliconas y casos especiales (galón, jumbo, profesional, premium, etc.)")
-    print(" - Normalización: UND/HOJA/100ml + overrides (10ml, 10g, 100g, 20cm, 1000und)")
-    print(" - Filas sin MARCA eliminadas")
-    print(" - Columna 'precio' eliminada; se mantiene 'precio_num'")
-    print(" - DEDUP por código: queda SOLO la primera aparición")
+    print(f"Archivo final guardado: {out_path}")
+
+    # Devuelvo el DF (con codigo_limpio, que ya no está en el Excel)
+    return df_final_sin_codigo.copy()
 
 
 # =============================================================================
@@ -1431,26 +1424,29 @@ def process_file(input_path: Path, output_dir: Path) -> None:
 # =============================================================================
 def main() -> None:
     print("=" * 80)
-    print(" PIPELINE TAILOY — LIMPIEZA + FILTRO (ALLOWED) — MULTI-FECHA")
+    print("PIPELINE TAILOY — LIMPIEZA + FILTRO (ALLOWED) — MULTI-FECHA")
     print("=" * 80)
-    print(f"RAW_ROOT : {RAW_ROOT}")
-    print(f"OUT_ROOT : {OUT_ROOT}")
-    print(f"PATRÓN   : {RAW_FILE_PATTERN}")
+    print(f"RAW_ROOT         : {RAW_ROOT}")
+    print(f"OUT_ROOT         : {OUT_ROOT}")
+    print(f"OUT_CONSOLIDADO  : {OUT_CONSOLIDADO}")
+    print(f"PATRÓN           : {RAW_FILE_PATTERN}")
     print("-" * 80)
 
     if not RAW_ROOT.exists():
-        print(f" RAW_ROOT no existe: {RAW_ROOT}")
+        print(f"ERROR: RAW_ROOT no existe: {RAW_ROOT}")
         return
 
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
+    OUT_CONSOLIDADO.mkdir(parents=True, exist_ok=True)
 
     date_dirs = sorted([p for p in RAW_ROOT.iterdir() if p.is_dir()])
     if not date_dirs:
-        print(" No se encontraron subcarpetas de fecha dentro de RAW_ROOT.")
+        print("ADVERTENCIA: No se encontraron subcarpetas de fecha dentro de RAW_ROOT.")
         return
 
     total_files = 0
     processed_ok = 0
+    consolidado_frames: List[pd.DataFrame] = []
 
     for date_dir in date_dirs:
         files = sorted(date_dir.glob(RAW_FILE_PATTERN))
@@ -1458,7 +1454,7 @@ def main() -> None:
             continue
 
         print("\n" + "=" * 80)
-        print(f" Carpeta fecha: {date_dir.name}")
+        print(f"Carpeta fecha: {date_dir.name}")
         print("=" * 80)
 
         output_dir = OUT_ROOT / date_dir.name
@@ -1467,19 +1463,36 @@ def main() -> None:
         for input_path in files:
             total_files += 1
             print("\n" + "-" * 80)
-            print(f" Procesando archivo: {input_path.name}")
+            print(f"Procesando archivo: {input_path.name}")
             print("-" * 80)
             try:
-                process_file(input_path, output_dir)
+                df_proc = process_file(input_path, output_dir)
+                if df_proc is not None and not df_proc.empty:
+                    df_proc = df_proc.copy()
+                    df_proc["fecha_scraping"] = date_dir.name
+                    consolidado_frames.append(df_proc)
                 processed_ok += 1
             except Exception as e:
-                print(f" Error procesando {input_path.name}: {e}")
+                print(f"ERROR procesando {input_path.name}: {e}")
+
+    # Guardar archivo consolidado si hay algo
+    if consolidado_frames:
+        df_consol = pd.concat(consolidado_frames, ignore_index=True)
+        consolidado_path = OUT_CONSOLIDADO / "consolidado_educacion.xlsx"
+        df_consol.to_excel(consolidado_path, index=False)
+        print("\n" + "=" * 80)
+        print("ARCHIVO CONSOLIDADO GENERADO")
+        print(f"  Ruta: {consolidado_path}")
+        print("=" * 80)
+    else:
+        print("\nADVERTENCIA: No se generaron datos para el consolidado (sin filas procesadas).")
 
     print("\n" + "=" * 80)
-    print(" FIN PIPELINE TAILOY")
+    print("FIN PIPELINE TAILOY")
     print(f"Archivos encontrados : {total_files}")
     print(f"Archivos procesados  : {processed_ok}")
-    print(f"Salida en            : {OUT_ROOT}")
+    print(f"Salida por fecha en  : {OUT_ROOT}")
+    print(f"Consolidado en       : {OUT_CONSOLIDADO}")
     print("=" * 80)
 
 
