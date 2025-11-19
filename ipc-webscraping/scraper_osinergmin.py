@@ -78,7 +78,7 @@ def gather_data(productos, folder_suffix, all_data):
         # print(f"🔍 Distritos encontrados: {len(all_distritos)} → {all_distritos}")
 
         # 4️⃣ Iterar sobre cada distrito
-        for distrito in all_distritos[1:2]:  # Limitar a los primeros 5 distritos para pruebas
+        for distrito in all_distritos:  # Limitar a los primeros 5 distritos para pruebas
             dist_elem = wait.until(EC.presence_of_element_located((By.XPATH, XPATH_SELECT_DIST)))
             Select(dist_elem).select_by_visible_text(distrito)
             time.sleep(2)
@@ -109,28 +109,13 @@ def gather_data(productos, folder_suffix, all_data):
                         df["Distrito"] = distrito
                         df["Producto"] = producto
                         all_data.append(df)  # Agregar el DataFrame al conjunto de datos
-                        print(f"✅ {distrito} | {producto}: {len(df)} filas capturadas")
+                        print(f"✅ ({all_distritos.index(distrito)}/{len(all_distritos)}) {distrito} | {producto}: {len(df)} filas capturadas")
                     else:
                         print(f"⚠️ {distrito} | {producto}: tabla vacía")
 
                 except Exception as e:
                     print(f"⚠️ Error capturando datos en {distrito}: {e}")
 
-        # # 5️⃣ Concatenar y guardar todo
-        # if all_data:
-        #     final_df = pd.concat(all_data, ignore_index=True)
-
-        #     # Crear carpeta con fecha actual
-        #     today = datetime.now()
-        #     folder_name = f"data/osinergmin/osin_{folder_suffix}_{today.strftime('%d_%m_%Y')}"
-        #     os.makedirs(folder_name, exist_ok=True)
-
-        #     file_path = os.path.join(folder_name, f"{DEPARTAMENTO}_{PROVINCIA}.csv")
-        #     final_df.to_csv(file_path, index=False, encoding="utf-8-sig")
-
-        #     # print(f"\n✅ Archivo guardado correctamente en: {file_path}")
-        # else:
-        #     print("\n⚠️ No se obtuvieron datos para guardar.")
     finally:
         driver.quit()
 
@@ -159,12 +144,12 @@ final_df = pd.concat(all_data, ignore_index=True)
 final_df["Fecha"] = today.date()
 final_df['Precio'] = pd.to_numeric(final_df['Precio de Venta (Soles por galón)'], errors="coerce")
 
-#FOLDER
+#FOLDER DIARIO
 folder_name = f"data/raw/osinergmin/"
 os.makedirs(folder_name, exist_ok=True)
 
-# Ruta del archivo consolidado
+# archivo consolidado del día
 file_path = os.path.join(folder_name, f"osinergmin_{today.strftime('%d_%m_%Y')}.csv")
 
 final_df.to_csv(file_path, index=False, encoding="utf-8-sig")
-final_df
+final_df.head(5)
