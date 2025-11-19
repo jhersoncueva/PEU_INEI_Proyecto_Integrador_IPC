@@ -73,7 +73,6 @@ ALLOWED: Dict[str, Dict[str, Set[str]]] = {
             "lapiceros",
             "lapices",
             "plumones-para-papel",
-            "portaminas-y-minas",
             "resaltadores",
             "tajadores",
         }
@@ -98,7 +97,6 @@ ALLOWED: Dict[str, Dict[str, Set[str]]] = {
             "lapiceros",
             "lapices",
             "plumones-para-papel",
-            "portaminas-y-minas",
             "resaltadores",
             "tajadores",
             "tijeras",
