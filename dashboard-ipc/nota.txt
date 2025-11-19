@@ -1,1 +1,0 @@
-En esta carpeta se encuentra el codigo para el dashboard en shiny
