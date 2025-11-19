@@ -48,22 +48,22 @@ PRODUCTO_A_NIVEL: Dict[str, str] = {
     "cartulinas": "INICIAL",
     "colores": "INICIAL",
     "crayones-y-oleos": "INICIAL",
+    "cuaderno triple reglon": "INICIAL",
     "limpiatipos": "INICIAL",
     "loncheras": "INICIAL",
     "plastilinas": "INICIAL",
-    "reglas": "INICIAL",
-    "cuaderno triple reglon": "INICIAL",
+    "reglas": "INICIAL",   
 
     # PRIMARIA
     "borradores": "PRIMARIA",
     "cartucheras": "PRIMARIA",
     "colas": "PRIMARIA",
     "cuaderno doble reglon": "PRIMARIA",
+    "cuaderno rayado": "PRIMARIA",
     "forros": "PRIMARIA",
     "gomas": "PRIMARIA",
     "lapices": "PRIMARIA",
     "mochila niño": "PRIMARIA",
-    "cuaderno rayado": "PRIMARIA",
     "tajadores": "PRIMARIA",
     "tijeras": "PRIMARIA",
 
@@ -75,9 +75,9 @@ PRODUCTO_A_NIVEL: Dict[str, str] = {
     "escuadras": "SECUNDARIA",
     "lapiceros": "SECUNDARIA",
     "mochila escolar": "SECUNDARIA",
+    "papel-bond": "SECUNDARIA",
     "plumones-para-papel": "SECUNDARIA",
     "resaltadores": "SECUNDARIA",
-    "files-y-folders-de-manila": "SECUNDARIA",
 }
 
 NIVELES_ORDEN: List[str] = ["INICIAL", "PRIMARIA", "SECUNDARIA"]
