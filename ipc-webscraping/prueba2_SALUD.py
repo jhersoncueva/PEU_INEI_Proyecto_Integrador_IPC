@@ -8,7 +8,7 @@ import numpy as np
 current_dir = Path(__file__).parent.absolute()
 
 # Archivo generado por el primer script
-input_file = current_dir / "data/consolidated/consolidado_salud/precios_consolidados.xlsx"
+input_file = current_dir / "data/consolidated/consolidado_salud.xlsx"
 
 # Carpeta y archivo de salida
 output_dir = current_dir / "data/base100"
