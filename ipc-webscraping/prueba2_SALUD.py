@@ -63,14 +63,18 @@ base_vals = base_vals.rename(columns={"precio_gmean": "precio_base"})
 geom = geom.merge(base_vals, on="CATEGORIA", how="left")
 
 # ------------------------------------------
-# CALCULAR IPC POR CATEGORÍA = (precio/ precio_base) * 100
+# CALCULAR IPC Y RENOMBRARLO A VALOR
 # ------------------------------------------
-geom["IPC"] = (geom["precio_gmean"] / geom["precio_base"]) * 100
+geom["VALOR"] = (geom["precio_gmean"] / geom["precio_base"]) * 100
 
 # ------------------------------------------
-# TABLA FINAL: Filas = Categoría, Columnas = Fecha
+# TABLA FINAL (FORMATO LARGO)
+# FECHA | CATEGORIA | VALOR
 # ------------------------------------------
-resultado = geom.pivot(index="CATEGORIA", columns="FECHA", values="IPC").reset_index()
+resultado = geom[["FECHA", "CATEGORIA", "VALOR"]].copy()
+
+# Ordenar
+resultado = resultado.sort_values(["FECHA", "CATEGORIA"])
 
 # ------------------------------------------
 # GUARDAR OUTPUT
