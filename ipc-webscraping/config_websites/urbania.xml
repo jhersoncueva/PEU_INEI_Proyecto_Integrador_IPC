@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <website name="urbania" base_url="https://urbania.pe/">
+        <actions>
+            <!-- Dos scrolls para asegurar carga completa -->
+            <action type="scroll" selector="" optional="true"/>
+            <action type="scroll" selector="" optional="true"/>
+        </actions>
+
+        <selectors>
+            <!-- Contenedor de cada propiedad -->
+            <container>div[data-id], a[href*='/inmueble/']</container>
+
+            <!-- Límite de propiedades por página -->
+            <limit>100</limit>
+
+            <!-- Precio -->
+            <precio>div[class*='price'], span[class*='price']</precio>
+
+            <!-- Ubicación -->
+            <ubicacion>h2, div[class*='location'], div[class*='address']</ubicacion>
+
+            <!-- Título -->
+            <titulo>h3, h2</titulo>
+
+            <!-- Características generales -->
+            <caracteristicas>span, li</caracteristicas>
+
+            <!-- Área (m² totales exactos) -->
+            <area>span.postingMainFeatures-module__posting-main-features-span</area>
+
+            <!-- Dormitorios -->
+            <dormitorios>span[class*='bedroom'], span[class*='dorm']</dormitorios>
+
+            <!-- Baños -->
+            <banos>span[class*='bathroom'], span[class*='baño']</banos>
+
+            <!-- Fecha de publicación -->
+            <fecha_publicacion>div.postingCard-module__posting-antiquity-date</fecha_publicacion>
+
+            <!-- URL -->
+            <url>a[href*='/inmueble/']</url>
+        </selectors>
+
+        <!-- 🔁 BLOQUE DE PAGINACIÓN FUNCIONAL -->
+        <pagination>
+            <!-- Tipo de elemento clickeable -->
+            <type>button</type>
+
+            <!-- Selector del botón padre que contiene el SVG de la flecha "siguiente" -->
+            <selector>button[class*='paging-module__next'], li[class*='paging-module__next']</selector>
+
+            <!-- Número máximo de páginas a recorrer -->
+            <max_pages>10</max_pages>
+
+            <!-- Indica si se debe hacer scroll durante la paginación -->
+            <scroll>1</scroll>
+        </pagination>
+    </website>
+</config>
