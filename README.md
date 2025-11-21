@@ -71,8 +71,8 @@ Para ejecutar cualquier código de extracción de datos, sigue los siguientes pa
 6. Cabe aclarar que la información se guarda en la carpeta `raw` [Carpeta](ipc-webscraping/data/raw). Posteriormente, se aplica la limpieza a la base de datos, y se guarda en la carpeta `processed` [Carpeta](ipc-webscraping/data/processed). Luego, se consolidan todas las fechas scrapeadas y el resultado se guarda en la carpeta `consolidated` [Carpeta](ipc-webscraping/data/consolidated). Finalmente, se realiza el cálculo para obtener el IPC por categorías y se guarda en la carpeta `base100` [Carpeta](ipc-webscraping/data/base100).
 
 ## Autores
-- Jherson Cueva - [https://github.com/jhersoncueva](#)
-- Luis Pérez - [https://github.com/luisenrique17500-pixel](#)
-- Mateo Manrique - [https://github.com/MATEO-PROG-001](#)
-- Ginno Castro - [https://github.com/GinnoJC](#)
-- Diana Hidalgo - [https://github.com/dianahe2003](#)
+- Jherson Cueva - [https://github.com/jhersoncueva]
+- Luis Pérez - [https://github.com/luisenrique17500-pixel]
+- Mateo Manrique - [https://github.com/MATEO-PROG-001]
+- Ginno Castro - [https://github.com/GinnoJC]
+- Diana Hidalgo - [https://github.com/dianahe2003]
