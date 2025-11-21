@@ -1,7 +1,5 @@
 # PEU-CD-Grupo-1-Proyecto-Integrador
 
-# PEU-CD-Grupo-1-Proyecto-Integrador
-
 Proyecto Integrador sobre Cálculo del índice de precios al consumidor utilizando datos de la web para Lima Metropolitana, utilizando las categorías establecidas en la Encuesta Nacional de Presupuestos Nacionales (ENAPREF), específicamente para **5 divisiones** de productos: **Alimentos y Bebidas no alcohólicas**, **Salud**, **Educación**, **Transporte** y **Alojamiento, Agua, Electricidad, Gas y Otros Combustibles**
 
 ## Índice
