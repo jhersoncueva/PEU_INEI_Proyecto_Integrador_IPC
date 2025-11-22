@@ -8,10 +8,10 @@ fecha_manual = None
 current_dir = Path(__file__).parent.absolute()
 
 # Directorios de entrada
-ink_base = current_dir / "data/processed/inkafarma"
-mif_base = current_dir / "data/processed/mi_farma"
+ink_base =  "data/processed/inkafarma"
+mif_base =  "data/processed/mi_farma"
 
-output_dir = current_dir / "data/consolidated"
+output_dir = "data/consolidated"
 output_dir.mkdir(parents=True, exist_ok=True)
 output_file = output_dir / "consolidado_salud.xlsx"
 
