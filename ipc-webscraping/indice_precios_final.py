@@ -4,7 +4,7 @@ import re
 import numpy as np
 
 # ---------------- CONFIGURACIÓN ----------------
-CARPETA = Path(r"d:\PEU-CD-Grupo-1-Proyecto-Integrador-main\ipc-webscraping\data\processed\consolidado")
+CARPETA = Path("data/processed/consolidado")
 BASE_FECHA = "20251031"  # fecha base = 31 de octubre 2025
 
 # ---------------- FUNCION PARA EXTRAER FECHA ----------------
