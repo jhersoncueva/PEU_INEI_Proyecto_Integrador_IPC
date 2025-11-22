@@ -20,7 +20,7 @@ from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 # ---------- CONFIG ----------
 # Carpeta OBLIGATORIA donde guardar resultados
-OUTPUT_BASE_DIR = r"C:\Users\Hp\Documents\GitHub\PEU_INEI_Proyecto_Integrador_IPC\ipc-webscraping\data\raw\tailoy"
+OUTPUT_BASE_DIR = "data/raw/tailoy"
 
 # Dominio fijo
 BASE_ROOT = "https://www.tailoy.com.pe"
