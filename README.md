@@ -1,8 +1,6 @@
-# PEU-CD-Grupo-1-Proyecto-Integrador
+# PEU-INEI-PROYECTO INTEGRADOR-IPC
 
-# PEU-CD-Grupo-1-Proyecto-Integrador
-
-Proyecto Integrador sobre Cálculo del índice de precios al consumidor utilizando datos de la web para Lima Metropolitana, utilizando las categorías establecidas en la Encuesta Nacional de Presupuestos Nacionales (ENAPREF), específicamente para **5 divisiones** de productos: **Alimentos y Bebidas no alcohólicas**, **Salud**, **Educación**, **Transporte** y **Alojamiento, Agua, Electricidad, Gas y Otros Combustibles**
+Proyecto Integrador sobre Cálculo del índice de precios al consumidor utilizando datos de la web para Lima Metropolitana, utilizando las categorías establecidas en la Encuesta Nacional de Presupuestos Nacionales (ENAPREF), específicamente para **5 divisiones** de productos: **Alimentos y Bebidas no alcohólicas**, **Salud**, **Educación**, **Transporte** y **Alojamiento**
 
 ## Índice
 - [Comenzando](#Comenzando) 
@@ -59,9 +57,9 @@ Para ejecutar cualquier código de extracción de datos, sigue los siguientes pa
 | **Metro**     | [scraper_metro.py](ipc-webscraping/scraper_metro.py)   |
 | **Wong**      | [scraper_wong.py](ipc-webscraping/scraper_wong.py)     |
 | **Vivanda**   | [scraper_vivanda.py](ipc-webscraping/scraper_vivanda.py) |
-| **MiFarma**   | [Scraper_MIFARMA.py](ipc-webscraping/Scraper_MIFARMA.py) |
-| **Inkafarma** | [Scraper_INKAFARMA.py](ipc-webscraping/Scraper_INKAFARMA.py) |
-| **TaiLoy**    | [Tailoy_scraping.py](ipc-webscraping/Tailoy_scraping.py) |
+| **MiFarma**   | [scraper_mifarma.py](ipc-webscraping/scraper_mifarma.py) |
+| **Inkafarma** | [scraper_inkafarma.py](ipc-webscraping/scraper_inkafarma.py) |
+| **TaiLoy**    | [scraper_tayloy.py](ipc-webscraping/scraper_tayloy.py) |
 | **Osinergmin**| [scraper_osinergmin.py](ipc-webscraping/scraper_osinergmin) |
 | **Urbania**   | [scraper_urbania.py](ipc-webscraping/scraper_urbania) |
 
@@ -73,8 +71,8 @@ Para ejecutar cualquier código de extracción de datos, sigue los siguientes pa
 6. Cabe aclarar que la información se guarda en la carpeta `raw` [Carpeta](ipc-webscraping/data/raw). Posteriormente, se aplica la limpieza a la base de datos, y se guarda en la carpeta `processed` [Carpeta](ipc-webscraping/data/processed). Luego, se consolidan todas las fechas scrapeadas y el resultado se guarda en la carpeta `consolidated` [Carpeta](ipc-webscraping/data/consolidated). Finalmente, se realiza el cálculo para obtener el IPC por categorías y se guarda en la carpeta `base100` [Carpeta](ipc-webscraping/data/base100).
 
 ## Autores
-- Jherson Cueva - [https://github.com/jhersoncueva](#)
-- Luis Pérez - [https://github.com/luisenrique17500-pixel](#)
-- Mateo Manrique - [https://github.com/MATEO-PROG-001](#)
-- Ginno Castro - [https://github.com/GinnoJC](#)
-- Diana Hidalgo - [https://github.com/dianahe2003](#)
+- Jherson Cueva - [https://github.com/jhersoncueva]
+- Luis Pérez - [https://github.com/luisenrique17500-pixel]
+- Mateo Manrique - [https://github.com/MATEO-PROG-001]
+- Ginno Castro - [https://github.com/GinnoJC]
+- Diana Hidalgo - [https://github.com/dianahe2003]

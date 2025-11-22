@@ -350,7 +350,7 @@ def main():
         df_consolidado['tienda'] = TIENDA
         
         # Guardar archivo consolidado
-        archivo_consolidado = output_path / f"CONSOLIDADO_plazavea_{current_date}.xlsx"
+        archivo_consolidado = output_path / f"consolidado_plazavea_{current_date}.xlsx"
         df_consolidado.to_excel(archivo_consolidado, index=False)
         
         print("\n" + "=" * 80)
