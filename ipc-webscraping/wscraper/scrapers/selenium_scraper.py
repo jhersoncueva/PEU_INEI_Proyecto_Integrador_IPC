@@ -32,9 +32,10 @@ from datetime import datetime
 import time
 
 
-COTA_MINIMA_TIEMPO = 2
-COTA_MAXIMA_TIEMPO = 5
-
+# COTA_MINIMA_TIEMPO = 2
+# COTA_MAXIMA_TIEMPO = 5
+COTA_MINIMA_TIEMPO = 0.3
+COTA_MAXIMA_TIEMPO = 0.8
 
 ### Clase Generica para hacer scraping en selenium
 
@@ -68,7 +69,7 @@ class WebScraper_Selenium:
         except Exception as e:
             print(f"Error al hacer scroll hasta el elemento: {e}")
     
-    def scroll_gradually(self, scroll_pause_time=0.1, scroll_step=1000):
+    def scroll_gradually(self, scroll_pause_time=0.001, scroll_step=2000):
         """
         Realiza un scroll gradual hacia abajo en una página web.
         
@@ -91,9 +92,28 @@ class WebScraper_Selenium:
                 break
             
             # Actualiza la altura si la página carga más contenido dinámicamente
-            last_height = self.driver.execute_script("return document.body.scrollHeight")
-        
+            last_height = self.driver.execute_script("return document.body.scrollHeight")   
         print("Scroll completado.")
+
+ 
+    def scroll_to_bottom_fast(self, wait_time=1.5):
+        last_height = self.driver.execute_script("return document.body.scrollHeight")
+
+        while True:
+            # Bajar al fondo
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(wait_time)
+
+            # Ver si hubo más contenido
+            new_height = self.driver.execute_script("return document.body.scrollHeight")
+
+            if new_height == last_height:
+                break
+
+            last_height = new_height
+
+        print("Scroll rápido completado.")
+
 
     # Función que maneja las acciones
     def perform_action(self, element, action, search_term):
@@ -108,11 +128,12 @@ class WebScraper_Selenium:
             element.send_keys(Keys.RETURN)
         elif action.get('type') == 'scroll':
             print("haciendo scroll down")
-            self.scroll_gradually(0.5, 115)
+            # self.scroll_gradually(0.5, 115)
+            self.scroll_to_bottom_fast()
         elif action.get('type') == 'scroll-top':
             print("haciendo scroll top")
-            self.driver.execute_script("window.scrollTo(0, 0);")     
-
+            self.driver.execute_script("window.scrollTo(0, 0);") 
+    
     def execute_actions(self, website_elem, search_term):
         for action in website_elem.find('actions'):
             try:
@@ -306,32 +327,39 @@ class WebScraper_Selenium:
             return []
             
         finally:
-            self.driver.quit()
+            # self.driver.quit()
+            return all_products
+            pass
 
 
-    def scrape_and_save(self, website_name, search_term, output_dir):
-        """Scrape products and save raw data to Parquet file using Pandas"""
-        # Aqui va la logica con el output_dir para crear la carpeta y eso
+    # def scrape_and_save(self, website_name, search_term, output_dir):
+    #     """Scrape products and save raw data to Parquet file using Pandas"""
+    #     # Aqui va la logica con el output_dir para crear la carpeta y eso
         
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
+    #     output_dir = Path(output_dir)
+    #     output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Scrapeamos el producto
-        products = self.scrape_products(website_name, search_term)
+    #     # Scrapeamos el producto
+    #     products = self.scrape_products(website_name, search_term)
 
-        if len(products) > 0:
-            df = pd.DataFrame(products)
+    #     if len(products) > 0:
+    #         df = pd.DataFrame(products)
 
-            # Añadimos los metadatos
-            df['website'] = website_name
-            df['search_term'] = search_term
-            df['scrape_timestamp'] = pd.Timestamp.now()
+    #         # Añadimos los metadatos
+    #         df['website'] = website_name
+    #         df['search_term'] = search_term
+    #         df['scrape_timestamp'] = pd.Timestamp.now()
 
-            # Generar nombre de archivo con timestamp
-            filename = f"{website_name}_{search_term}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            filepath = output_dir / filename
-            # Guardar como CSV
-            df.to_csv(filepath, index=False)
+    #         # Generar nombre de archivo con timestamp
+    #         filename = f"{website_name}_{search_term}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    #         filepath = output_dir / filename
+    #         # Guardar como CSV
+    #         df.to_csv(filepath, index=False)
             
-            return filepath
-        return None
+    #         return filepath
+    #     return None
+    def scrape_as_df(self, website_name, search_term):
+        products = self.scrape_products(website_name, search_term)
+        if len(products) > 0:
+            return pd.DataFrame(products)
+        return pd.DataFrame()  # vacío

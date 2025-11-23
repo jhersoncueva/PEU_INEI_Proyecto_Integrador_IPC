@@ -1,3 +1,5 @@
+# python scraper_urbania.py
+
 import os
 import datetime
 import pandas as pd
@@ -18,7 +20,7 @@ current_date = datetime.datetime.now().strftime("%Y_%m_%d")
 # output_path = os.path.join(current_dir, "data", "raw", "urbania", current_date)
 config_path = "config_websites/urbania.xml"
 csv_path = "base_period/urbania_precios.csv"
-output_path = f"../data/raw/urbania/{current_date}"
+output_path = f"../data/raw/urbania/" #{current_date}"
 os.makedirs(output_path, exist_ok=True)
 
 # Verificar archivos
@@ -68,6 +70,7 @@ def construir_urls_urbania(ciudad, tipo_operacion, tipo_inmueble, max_paginas=10
         tipo_inmueble = "locales"
 
     # Crear lista de URLs por página con filtro últimos 7 días
+                "https://urbania.pe/mapas/alquiler-de-departamentos-en-lima?publicationDate=0"
     base_url = f"https://urbania.pe/buscar/{tipo_operacion}-de-{tipo_inmueble}-en-{ciudad}?publicationDate=0"
     urls = [base_url]
 
@@ -113,14 +116,20 @@ for idx, fila in df.iterrows():
 
             search_term = f"{ciudad}_{tipo}_{inmueble}_p{num}"
 
-            # Ejecutar el scraping
-            resultado = scraper.scrape_and_save("urbania", search_term, output_path)
+            ## Ejecutar el scraping
+            # resultado = scraper.scrape_and_save("urbania", search_term, output_path)
                 
-            if not resultado or not os.path.exists(resultado):
+            # if not resultado or not os.path.exists(resultado):
+            #     print(f" ⚠️ Página {num} vacía. Se detiene la búsqueda aquí.")
+            #     break
+            temp_df = scraper.scrape_as_df("urbania", search_term)
+
+            if temp_df.empty:
                 print(f" ⚠️ Página {num} vacía. Se detiene la búsqueda aquí.")
                 break
+
             # if resultado and os.path.exists(resultado):
-            temp_df = pd.read_csv(resultado)
+            # temp_df = pd.read_csv(resultado)
             temp_df["Ciudad"] = ciudad
             temp_df["Tipo"] = tipo
             temp_df["Inmueble"] = inmueble
@@ -142,6 +151,9 @@ for idx, fila in df.iterrows():
             print(f" ❌ Error en página {num}: {str(e)}")
             continue
 
+
+scraper.driver.quit()
+
 # ============================================================
 # ELIMINAR DUPLICADOS Y GUARDAR CONSOLIDADO FINAL
 # ============================================================
@@ -151,8 +163,14 @@ data_acumulada.drop_duplicates(subset=['url'], inplace=True)
 registros_finales = len(data_acumulada)
 duplicados_eliminados = total_registros - registros_finales
 
-csv_final = os.path.join(output_path, f"urbania_completo_{current_date}.csv")
+# csv_final = os.path.join(output_path, f"urbania_completo_{current_date}.csv")
+# data_acumulada.to_csv(csv_final, index=False, encoding='utf-8-sig')
+csv_final = os.path.join(output_path, f"urbania_{current_date}.csv")
 data_acumulada.to_csv(csv_final, index=False, encoding='utf-8-sig')
+
+csv_final = os.path.join(output_path, f"urbania_{current_date}.xlsx")
+data_acumulada.to_excel(csv_final, index=False)
+
 
 print("\n🎯 Scraping finalizado correctamente.")
 print(f"📦 Archivo consolidado guardado en:\n{csv_final}")
@@ -165,13 +183,15 @@ print("="*70)
 # ELIMINAR CSV INDIVIDUALES
 # ============================================================
 
-print("\n🧹 Eliminando archivos CSV intermedios...")
+# print("\n🧹 Eliminando archivos CSV intermedios...")
 
-for archivo in os.listdir(output_path):
-    if archivo.endswith(".csv") and not archivo.startswith("urbania_completo_"):
-        ruta = os.path.join(output_path, archivo)
-        os.remove(ruta)
-        print(f" 🗑️ Eliminado: {archivo}")
+# for archivo in os.listdir(output_path):
+#     if archivo.endswith(".csv") and not archivo.startswith("urbania_completo_"):
+#         ruta = os.path.join(output_path, archivo)
+#         os.remove(ruta)
+#         print(f" 🗑️ Eliminado: {archivo}")
+
+
 
 print("✅ Limpieza completada. Solo queda el consolidado final.")
 print("="*70)
