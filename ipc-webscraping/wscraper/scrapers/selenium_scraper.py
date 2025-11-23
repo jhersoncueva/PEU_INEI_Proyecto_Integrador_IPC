@@ -68,7 +68,7 @@ class WebScraper_Selenium:
         except Exception as e:
             print(f"Error al hacer scroll hasta el elemento: {e}")
     
-    def scroll_gradually(self, scroll_pause_time=0.5, scroll_step=200):
+    def scroll_gradually(self, scroll_pause_time=0.1, scroll_step=1000):
         """
         Realiza un scroll gradual hacia abajo en una página web.
         

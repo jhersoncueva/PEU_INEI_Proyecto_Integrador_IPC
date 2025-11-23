@@ -10,12 +10,15 @@ from scrapers.selenium_scraper import WebScraper_Selenium
 # CONFIGURACIÓN DE RUTAS
 # ============================================================
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+# current_dir = os.path.dirname(os.path.abspath(__file__))
 current_date = datetime.datetime.now().strftime("%Y_%m_%d")
 
-config_path = os.path.join(current_dir, "config_websites", "urbania.xml")
-csv_path = os.path.join(current_dir, "base_period", "urbania_precios.csv")
-output_path = os.path.join(current_dir, "data", "raw", "urbania", current_date)
+# config_path = os.path.join(current_dir, "config_websites", "urbania.xml")
+# csv_path = os.path.join(current_dir, "base_period", "urbania_precios.csv")
+# output_path = os.path.join(current_dir, "data", "raw", "urbania", current_date)
+config_path = "config_websites/urbania.xml"
+csv_path = "base_period/urbania_precios.csv"
+output_path = f"../data/raw/urbania/{current_date}"
 os.makedirs(output_path, exist_ok=True)
 
 # Verificar archivos
@@ -65,7 +68,7 @@ def construir_urls_urbania(ciudad, tipo_operacion, tipo_inmueble, max_paginas=10
         tipo_inmueble = "locales"
 
     # Crear lista de URLs por página con filtro últimos 7 días
-    base_url = f"https://urbania.pe/buscar/{tipo_operacion}-de-{tipo_inmueble}-en-{ciudad}?publicationDate=7"
+    base_url = f"https://urbania.pe/buscar/{tipo_operacion}-de-{tipo_inmueble}-en-{ciudad}?publicationDate=0"
     urls = [base_url]
 
     for i in range(2, max_paginas + 1):
@@ -76,8 +79,8 @@ def construir_urls_urbania(ciudad, tipo_operacion, tipo_inmueble, max_paginas=10
 # ============================================================
 # SCRAPING PRINCIPAL
 # ============================================================
-
 data_acumulada = pd.DataFrame()
+scraper = WebScraper_Selenium(config_path, chrome_options)
 
 for idx, fila in df.iterrows():
     ciudad = fila["CIUDAD"]
@@ -94,37 +97,46 @@ for idx, fila in df.iterrows():
     print(f" 🔗 Total de páginas a scrapear: {len(urls)}")
     print(f"{'='*70}\n")
 
+
     for num, url in enumerate(urls, start=1):
+        if "publicationDate=" not in url:
+            url += "&publicationDate=0"
         try:
             print(f" → Página {num}: {url}")
 
-            scraper = WebScraper_Selenium(config_path, chrome_options)
+            # scraper = WebScraper_Selenium(config_path, chrome_options)
             website = scraper.config.find(".//website[@name='urbania']")
             if website is not None:
                 website.set('base_url', url)
+
+            
 
             search_term = f"{ciudad}_{tipo}_{inmueble}_p{num}"
 
             # Ejecutar el scraping
             resultado = scraper.scrape_and_save("urbania", search_term, output_path)
-
-            if resultado and os.path.exists(resultado):
-                temp_df = pd.read_csv(resultado)
-                temp_df["Ciudad"] = ciudad
-                temp_df["Tipo"] = tipo
-                temp_df["Inmueble"] = inmueble
-                temp_df["Pagina"] = num
+                
+            if not resultado or not os.path.exists(resultado):
+                print(f" ⚠️ Página {num} vacía. Se detiene la búsqueda aquí.")
+                break
+            # if resultado and os.path.exists(resultado):
+            temp_df = pd.read_csv(resultado)
+            temp_df["Ciudad"] = ciudad
+            temp_df["Tipo"] = tipo
+            temp_df["Inmueble"] = inmueble
+            temp_df["Pagina"] = num
 
                 # Columna nueva para la fecha de publicación
-                if 'fecha_publicacion' in temp_df.columns:
-                    temp_df["Fecha_Publicacion"] = temp_df["fecha_publicacion"]
-                else:
-                    temp_df["Fecha_Publicacion"] = ""
-
-                data_acumulada = pd.concat([data_acumulada, temp_df], ignore_index=True)
-                print(f" ✅ Página {num} guardada ({len(temp_df)} registros)")
+            if 'fecha_publicacion' in temp_df.columns:
+                temp_df["Fecha_Publicacion"] = temp_df["fecha_publicacion"]
             else:
-                print(f" ⚠️ Sin resultados en página {num}")
+                temp_df["Fecha_Publicacion"] = ""
+
+            data_acumulada = pd.concat([data_acumulada, temp_df], ignore_index=True)
+            print(f" ✅ Página {num} guardada ({len(temp_df)} registros)")
+
+            # else:
+            #     print(f" ⚠️ Sin resultados en página {num}")
 
         except Exception as e:
             print(f" ❌ Error en página {num}: {str(e)}")
